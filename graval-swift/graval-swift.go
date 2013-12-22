@@ -36,7 +36,7 @@ import (
 //
 // This really just exists as a minimal demonstration of the interface graval
 // drivers are required to implement.
-type SwiftDriver struct{
+type SwiftDriver struct {
 	connection *swift.Connection
 	container  string
 	user       string
@@ -67,7 +67,7 @@ func (driver *SwiftDriver) ModifiedTime(path string) (time.Time, error) {
 }
 func (driver *SwiftDriver) ChangeDir(path string) bool {
 	path = scoped_path(driver.user, path)
-	if path == ("/"+driver.user) {
+	if path == ("/" + driver.user) {
 		return true
 	}
 	log.Printf("ChangeDir: %s", path)
@@ -80,17 +80,17 @@ func (driver *SwiftDriver) ChangeDir(path string) bool {
 func (driver *SwiftDriver) DirContents(path string) (files []os.FileInfo) {
 	path = scoped_path_with_trailing_slash(driver.user, path)
 	log.Printf("DirContents: %s", path)
-	opts    := &swift.ObjectsOpts{Prefix:path, Delimiter:'/'}
+	opts := &swift.ObjectsOpts{Prefix: path, Delimiter: '/'}
 	objects, err := driver.connection.ObjectsAll(driver.container, opts)
 	if err != nil {
 		return // error connecting to cloud files
 	}
 	for _, object := range objects {
-		tail     := strings.Replace(object.Name, path, "", 1)
-        basename := strings.Split(tail, "/")[0]
+		tail := strings.Replace(object.Name, path, "", 1)
+		basename := strings.Split(tail, "/")[0]
 		if object.ContentType == "application/directory" && object.SubDir == "" {
 			files = append(files, graval.NewDirItem(basename))
-		} else if object.ContentType != "application/directory"  {
+		} else if object.ContentType != "application/directory" {
 			files = append(files, graval.NewFileItem(basename, int(object.Bytes)))
 		}
 	}
@@ -117,14 +117,14 @@ func (driver *SwiftDriver) DeleteFile(path string) bool {
 }
 func (driver *SwiftDriver) Rename(fromPath string, toPath string) bool {
 	fromPath = scoped_path(driver.user, fromPath)
-	toPath   = scoped_path(driver.user, toPath)
+	toPath = scoped_path(driver.user, toPath)
 	log.Printf("Rename: %s %s", fromPath, toPath)
 	return false
 }
 func (driver *SwiftDriver) MakeDir(path string) bool {
 	path = scoped_path(driver.user, path)
 	log.Printf("MakeDir: %s", path)
-	opts    := &swift.ObjectsOpts{Prefix:path}
+	opts := &swift.ObjectsOpts{Prefix: path}
 	objects, err := driver.connection.ObjectNames(driver.container, opts)
 	if err != nil {
 		return false // error connection to cloud files
@@ -135,15 +135,26 @@ func (driver *SwiftDriver) MakeDir(path string) bool {
 	driver.connection.ObjectPutString(driver.container, path, "", "application/directory")
 	return true
 }
-func (driver *SwiftDriver) GetFile(path string) (data string, err error) {
+
+func (driver *SwiftDriver) GetFile(path string, w io.Writer) bool {
 	path = scoped_path(driver.user, path)
 	log.Printf("GetFile: %s", path)
-	data, err = driver.connection.ObjectGetString(driver.container, path)
+
+	data, err = driver.connection.ObjectGetBytes(driver.container, path)
 	if err != nil {
-		return "", errors.New("foo")
+		log.Printf("GetFile Error: %s", err)
+		return false
 	}
-	return
+
+	_, err := w.Write(data)
+	if err != nil {
+		log.Printf("GetFile Error: %s", err)
+		return false
+	}
+
+	return true
 }
+
 func (driver *SwiftDriver) PutFile(destPath string, data io.Reader) bool {
 	destPath = scoped_path(driver.user, destPath)
 	log.Printf("PutFile: %s", destPath)
@@ -183,7 +194,7 @@ type SwiftDriverFactory struct{}
 
 func (factory *SwiftDriverFactory) NewDriver() (graval.FTPDriver, error) {
 	driver := &SwiftDriver{}
-	driver.container  = os.Getenv("Container")
+	driver.container = os.Getenv("Container")
 	if driver.container == "" {
 		return nil, errors.New("Container env variable not set")
 	}
@@ -202,7 +213,7 @@ func (factory *SwiftDriverFactory) NewDriver() (graval.FTPDriver, error) {
 // it's alive!
 func main() {
 	factory := &SwiftDriverFactory{}
-	ftpServer := graval.NewFTPServer(&graval.FTPServerOpts{ Factory: factory })
+	ftpServer := graval.NewFTPServer(&graval.FTPServerOpts{Factory: factory})
 	err := ftpServer.ListenAndServe()
 	if err != nil {
 		log.Fatal("Error starting server!")

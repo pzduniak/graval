@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	fileOne = "This is the first file available for download.\n\nBy Jàmes"
+	fileOne = "This is the first file available for download.\n\nBy JĂ mes"
 	fileTwo = "This is file number two.\n\n2012-12-04"
 )
 
@@ -79,14 +79,23 @@ func (driver *MemDriver) Rename(fromPath string, toPath string) bool {
 func (driver *MemDriver) MakeDir(path string) bool {
 	return false
 }
-func (driver *MemDriver) GetFile(path string) (data string, err error) {
+func (driver *MemDriver) GetFile(path string, w io.Writer) bool {
 	switch path {
 	case "/one.txt":
-		data = fileOne
+		_, err := w.Write(fileOne)
+		if err != nil {
+			log.Print(err)
+			return false
+		}
 	case "/files/two.txt":
-		data = fileTwo
+		_, err := w.Write(fileTwo)
+		if err != nil {
+			log.Print(err)
+			return false
+		}
 	}
-	return
+
+	return true
 }
 func (driver *MemDriver) PutFile(destPath string, data io.Reader) bool {
 	return false
@@ -104,7 +113,7 @@ func (factory *MemDriverFactory) NewDriver() (graval.FTPDriver, error) {
 // it's alive!
 func main() {
 	factory := &MemDriverFactory{}
-	ftpServer := graval.NewFTPServer(&graval.FTPServerOpts{ Factory: factory })
+	ftpServer := graval.NewFTPServer(&graval.FTPServerOpts{Factory: factory})
 	err := ftpServer.ListenAndServe()
 	if err != nil {
 		log.Print(err)
