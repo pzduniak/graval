@@ -98,7 +98,7 @@ func newPassiveSocket(logger *ftpLogger) (ftpDataSocket, error) {
 }
 
 func (socket *ftpPassiveSocket) Host() string {
-	return "127.0.0.1"
+	return socket.host
 }
 
 func (socket *ftpPassiveSocket) Port() int {
